@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BQ Data Agent Test</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>BQ Data Agent Test Harness</h1>
+        <p class="subtitle">Test OAuth passthrough to Agent Engine</p>
+        
+        <div class="login-box">
+            <p>Login with your Google account to test querying the Data Agent with your identity.</p>
+            <a href="{{ url_for('login') }}" class="btn btn-primary">Login with Google</a>
+        </div>
+        
+        <div class="info-box">
+            <h3>What this tests:</h3>
+            <ul>
+                <li>OAuth login captures your access token</li>
+                <li>Token is passed to Agent Engine session state</li>
+                <li>Agent bridges token to DataAgentToolset</li>
+                <li>BigQuery queries run with your identity</li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>

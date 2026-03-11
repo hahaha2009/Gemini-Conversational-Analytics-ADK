@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BQ Data Agent Chat</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>BQ Data Agent Chat</h1>
+            <div class="user-info">
+                <span>{{ user_email }}</span>
+                <a href="{{ url_for('logout') }}" class="btn btn-small">Logout</a>
+            </div>
+        </header>
+        
+        <div class="status-bar">
+            <div class="status-item">
+                <strong>Agent:</strong> {{ reasoning_engine_id }}
+            </div>
+            <div class="status-item">
+                <strong>Auth Resource:</strong> {{ auth_resource_id }}
+            </div>
+            <div class="status-item">
+                <strong>Token Expires:</strong> 
+                <span id="token-expiry">{{ token_expiry or 'Unknown' }}</span>
+            </div>
+        </div>
+        
+        <div id="chat-messages" class="chat-messages">
+            <div class="message system">
+                Connected. Your OAuth token will be passed to the agent for BigQuery queries.
+            </div>
+        </div>
+        
+        <form id="chat-form" class="chat-form">
+            <input type="text" id="message-input" placeholder="Ask about orders, users, or events..." autocomplete="off">
+            <button type="submit" id="send-btn">Send</button>
+        </form>
+    </div>
+    
+    <script>
+        const chatMessages = document.getElementById('chat-messages');
+        const chatForm = document.getElementById('chat-form');
+        const messageInput = document.getElementById('message-input');
+        const sendBtn = document.getElementById('send-btn');
+        
+        function addMessage(text, type) {
+            const div = document.createElement('div');
+            div.className = 'message ' + type;
+            div.textContent = text;
+            chatMessages.appendChild(div);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+        
+        chatForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const message = messageInput.value.trim();
+            if (!message) return;
+            
+            addMessage(message, 'user');
+            messageInput.value = '';
+            sendBtn.disabled = true;
+            sendBtn.textContent = 'Sending...';
+            
+            try {
+                const response = await fetch('/api/query', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({message})
+                });
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    addMessage('Error: ' + data.error, 'error');
+                } else {
+                    addMessage(data.response, 'agent');
+                    if (data.session_id) {
+                        console.log('Session ID:', data.session_id);
+                    }
+                }
+            } catch (err) {
+                addMessage('Request failed: ' + err.message, 'error');
+            } finally {
+                sendBtn.disabled = false;
+                sendBtn.textContent = 'Send';
+            }
+        });
+        
+        messageInput.focus();
+    </script>
+</body>
+</html>

@@ -1,0 +1,18 @@
+.venv/
+.ruff_cache/
+__pycache__/
+*.pyc
+.env
+.adk/
+requirements.txt
+*.db
+
+# Per-agent environment files (contain secrets)
+app/orders/.env
+app/inventory/.env
+
+# ADK deployment temp folders
+*_tmp*/
+
+# Test web app virtual environment
+test_web/.venv/
