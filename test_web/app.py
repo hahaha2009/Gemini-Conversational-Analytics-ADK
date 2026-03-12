@@ -160,13 +160,24 @@ def query():
 
     access_token = session["access_token"]
     user_email = session.get("user_email", "test-user")
+    
+    # Use selected agent from request or session
+    selected_agent_id = data.get("agent_id") or session.get("selected_agent_id") or AGENT_ID
+    
+    if selected_agent_id and selected_agent_id != AGENT_ID:
+        session["selected_agent_id"] = selected_agent_id
 
     if DIRECT_CA_MODE:
         # DIRECT CA MODE: Call CA API directly using user's token
         try:
             creds = Credentials(token=access_token)
             gda_client = geminidataanalytics.DataChatServiceClient(credentials=creds)
-            agent_path = f"projects/{PROJECT_ID}/locations/{LOCATION}/dataAgents/{AGENT_ID}"
+            
+            # Construct agent path dynamically
+            if "/" in selected_agent_id:
+                agent_path = selected_agent_id
+            else:
+                agent_path = f"projects/{PROJECT_ID}/locations/{LOCATION}/dataAgents/{selected_agent_id}"
             
             # Construct direct stateless chat request
             request_data = geminidataanalytics.ChatRequest(
@@ -193,7 +204,7 @@ def query():
                         text_dict = MessageToDict(sys_msg.text._pb)
                         parts = text_dict.get("parts", [])
                         if parts:
-                            response_parts.append(" ".join(parts))
+                            response_parts.append("\n".join(parts))
                         
                     # Handle data/SQL
                     if sys_msg.data:
@@ -201,18 +212,29 @@ def query():
                             # response_parts.append(f"\nSQL: {sys_msg.data.generated_sql}")
                             pass
                         if sys_msg.data.result and sys_msg.data.result.data:
-                            response_parts.append(f"\n({len(sys_msg.data.result.data)} rows retrieved):")
                             msg_dict = MessageToDict(sys_msg.data.result._pb)
                             data_rows = msg_dict.get("data", [])
-                            for i, row in enumerate(data_rows[:5]):
-                                response_parts.append(f"Row {i+1}: {row}")
+                            if data_rows:
+                                response_parts.append(f"\n({len(sys_msg.data.result.data)} rows retrieved):")
+                                # Create markdown table
+                                headers = list(data_rows[0].keys())
+                                header_row = "| " + " | ".join(headers) + " |"
+                                divider_row = "| " + " | ".join(["---"] * len(headers)) + " |"
+                                table_rows = []
+                                for row in data_rows[:10]:  # Limit to 10 rows for display
+                                    table_rows.append("| " + " | ".join(str(row.get(h, "")) for h in headers) + " |")
+                                
+                                markdown_table = "\n".join([header_row, divider_row] + table_rows)
+                                response_parts.append(markdown_table)
+                                if len(data_rows) > 10:
+                                    response_parts.append(f"\n*Showing top 10 rows only.*")
                     
                     # Handle errors returned in the protocol
                     if sys_msg.error:
                         response_parts.append(f"Error from Agent: {sys_msg.error.text}")
             
             return {
-                "response": " ".join(response_parts) or "Direct CA responded, but no visible message found.",
+                "response": "\n\n".join(response_parts) or "Direct CA responded, but no visible message found.",
                 "session_id": "direct-ca-session",
             }
         except Exception as e:
@@ -307,6 +329,41 @@ def query():
         "response": response_text or "No response from agent",
         "session_id": session_id,
     }
+
+
+@app.route("/api/agents")
+def list_agents():
+    """List available BigQuery Data Agents."""
+    if "access_token" not in session:
+        return {"error": "Not authenticated"}, 401
+    
+    try:
+        creds = Credentials(token=session["access_token"])
+        gda_client = geminidataanalytics.DataChatServiceClient(credentials=creds)
+        parent = f"projects/{PROJECT_ID}/locations/{LOCATION}"
+        
+        # Use v1beta discovery/list pattern
+        agents = []
+        try:
+            # We use the CA API to list agents
+            request = geminidataanalytics.ListDataAgentsRequest(parent=parent)
+            page_result = gda_client.list_data_agents(request=request)
+            for agent in page_result:
+                agents.append({
+                    "id": agent.name.split("/")[-1],
+                    "full_name": agent.name,
+                    "display_name": agent.display_name or agent.name.split("/")[-1]
+                })
+        except Exception as e:
+            # Fallback to the default agent if listing fails
+            agents = [{
+                "id": AGENT_ID,
+                "display_name": "Default Agent (From Config)"
+            }]
+            
+        return {"agents": agents}
+    except Exception as e:
+        return {"error": f"Failed to list agents: {e}"}, 500
 
 
 @app.route("/auth/logout")

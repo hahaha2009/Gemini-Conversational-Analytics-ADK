@@ -173,7 +173,9 @@ python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 python app.py
+../.venv/bin/python app.py
 ```
+
 
 Open http://localhost:8080, login with Google, and query the agent.
 

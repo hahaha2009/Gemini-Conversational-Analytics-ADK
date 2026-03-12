@@ -5,11 +5,53 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BQ Data Agent Chat</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <!-- Markdown & Syntax Highlighting -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <!-- Visualization Support -->
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <style>
+        .chart-container {
+            background: rgba(15, 23, 42, 0.5);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 15px;
+            margin: 15px 0;
+            min-height: 300px;
+        }
+        .chart-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .agent-selector {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            color: var(--text-primary);
+            padding: 5px 10px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            margin-left: 15px;
+            cursor: pointer;
+            outline: none;
+            backdrop-filter: blur(10px);
+        }
+        .agent-selector option {
+            background: #1e293b;
+            color: var(--text-primary);
+        }
+    </style>
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>BQ Data Agent Chat</h1>
+            <div style="display: flex; align-items: center;">
+                <h1>BQ Data Agent</h1>
+                <select id="agent-select" class="agent-selector">
+                    <option value="">Loading agents...</option>
+                </select>
+            </div>
             <div class="user-info">
                 <span>{{ user_email }}</span>
                 <a href="{{ url_for('logout') }}" class="btn btn-small">Logout</a>
@@ -18,27 +60,29 @@
         
         <div class="status-bar">
             <div class="status-item">
-                <strong>Agent:</strong> {{ reasoning_engine_id }}
+                <strong>Active Agent</strong> <span id="active-agent-display">Default</span>
             </div>
             <div class="status-item">
-                <strong>Auth Resource:</strong> {{ auth_resource_id }}
+                <strong>Auth</strong> {{ auth_resource_id }}
             </div>
             <div class="status-item">
-                <strong>Token Expires:</strong> 
-                <span id="token-expiry">{{ token_expiry or 'Unknown' }}</span>
+                <strong>Expires</strong> 
+                <span id="token-expiry">--:--</span>
             </div>
         </div>
         
         <div id="chat-messages" class="chat-messages">
             <div class="message system">
-                Connected. Your OAuth token will be passed to the agent for BigQuery queries.
+                Security Bridge Active. OAuth identity will be passed to BigQuery.
             </div>
         </div>
         
-        <form id="chat-form" class="chat-form">
-            <input type="text" id="message-input" placeholder="Ask about orders, users, or events..." autocomplete="off">
-            <button type="submit" id="send-btn">Send</button>
-        </form>
+        <div class="input-container">
+            <form id="chat-form" class="chat-form">
+                <input type="text" id="message-input" placeholder="Ask about customers, orders, or insights..." autocomplete="off">
+                <button type="submit" id="send-btn" class="btn btn-primary">Send</button>
+            </form>
+        </div>
     </div>
     
     <script>
@@ -46,13 +90,227 @@
         const chatForm = document.getElementById('chat-form');
         const messageInput = document.getElementById('message-input');
         const sendBtn = document.getElementById('send-btn');
+        const agentSelect = document.getElementById('agent-select');
+        const activeAgentDisplay = document.getElementById('active-agent-display');
+        let latestUserQuery = "";
         
-        function addMessage(text, type) {
+        marked.setOptions({
+            highlight: function(code, lang) {
+                const language = hljs.getLanguage(lang) ? lang : 'plaintext';
+                return hljs.highlight(code, { language }).value;
+            },
+            headerIds: false,
+            mangle: false
+        });
+
+        // Fetch available agents
+        async function fetchAgents() {
+            try {
+                const response = await fetch('/api/agents');
+                const data = await response.json();
+                if (data.agents) {
+                    agentSelect.innerHTML = '';
+                    data.agents.forEach(agent => {
+                        const opt = document.createElement('option');
+                        opt.value = agent.id;
+                        opt.textContent = agent.display_name;
+                        agentSelect.appendChild(opt);
+                    });
+                    
+                    // Set initial active agent display
+                    if (data.agents.length > 0) {
+                        activeAgentDisplay.textContent = agentSelect.options[agentSelect.selectedIndex].text;
+                    }
+                }
+            } catch (err) {
+                console.error('Failed to fetch agents:', err);
+                agentSelect.innerHTML = '<option value="">Error loading agents</option>';
+            }
+        }
+        fetchAgents();
+
+        agentSelect.addEventListener('change', () => {
+            activeAgentDisplay.textContent = agentSelect.options[agentSelect.selectedIndex].text;
+            addMessage(`Switched to agent: ${activeAgentDisplay.textContent}`, 'system');
+        });
+
+        function formatTokenExpiry() {
+            const expiryStr = "{{ token_expiry }}";
+            if (!expiryStr || expiryStr === 'None') return;
+            try {
+                const expiry = new Date(expiryStr);
+                const now = new Date();
+                const diffMs = expiry - now;
+                if (diffMs < 0) {
+                    document.getElementById('token-expiry').textContent = 'Expired';
+                    return;
+                }
+                const diffMins = Math.floor(diffMs / 60000);
+                document.getElementById('token-expiry').textContent = diffMins + 'm';
+            } catch (e) {
+                console.error('Error parsing date:', e);
+            }
+        }
+        formatTokenExpiry();
+
+        function addMessage(content, type) {
             const div = document.createElement('div');
             div.className = 'message ' + type;
-            div.textContent = text;
+            
+            if (type === 'agent') {
+                div.innerHTML = marked.parse(content);
+                div.querySelectorAll('pre code').forEach((block) => {
+                    hljs.highlightElement(block);
+                });
+                const tables = div.querySelectorAll('table');
+                tables.forEach((table, index) => {
+                    addChartAction(table, div, index);
+                });
+            } else {
+                div.textContent = content;
+            }
+            
             chatMessages.appendChild(div);
             chatMessages.scrollTop = chatMessages.scrollHeight;
+            return div;
+        }
+
+        function addChartAction(table, messageDiv, index) {
+            const actionsDiv = document.createElement('div');
+            actionsDiv.className = 'chart-actions';
+            
+            const btn = document.createElement('button');
+            btn.className = 'btn btn-small';
+            btn.innerHTML = '📊 Visualize Data';
+            btn.onclick = () => createChartFromTable(table, actionsDiv);
+            
+            actionsDiv.appendChild(btn);
+            messageDiv.appendChild(actionsDiv);
+
+            const chartKeywords = ['chart', 'graph', 'plot', 'visualize', 'trend', 'diagram'];
+            if (chartKeywords.some(kw => latestUserQuery.toLowerCase().includes(kw))) {
+                setTimeout(() => createChartFromTable(table, actionsDiv), 100);
+            }
+        }
+
+        function createChartFromTable(table, container) {
+            const headers = Array.from(table.querySelectorAll('th')).map(th => th.innerText.trim());
+            const rows = Array.from(table.querySelectorAll('tbody tr')).map(tr => 
+                Array.from(tr.querySelectorAll('td')).map(td => td.innerText.trim())
+            );
+
+            if (rows.length === 0) return;
+
+            let xAxisIdx = -1;
+            const numericColIndices = [];
+            
+            const isNumericValue = (v) => {
+                if (!v) return false;
+                const clean = v.replace(/,/g, '');
+                return /^-?\d*\.?\d+$/.test(clean);
+            };
+
+            const isDateValue = (v) => {
+                if (!v) return false;
+                return /^\d{4}-\d{2}-\d{2}$|^\d{4}\/\d{2}\/\d{2}$|^\d{2}\/\d{2}\/\d{4}$/.test(v);
+            };
+
+            headers.forEach((header, i) => {
+                const values = rows.map(r => r[i]);
+                const allNumeric = values.every(v => isNumericValue(v));
+                const anyDate = values.some(v => isDateValue(v));
+                
+                const h = header.toLowerCase();
+                const isDateHeader = h.includes('date') || h.includes('month') || h.includes('year') || h.includes('time') || h.includes('day') || h.includes('period');
+
+                if (anyDate || isDateHeader) {
+                    xAxisIdx = i;
+                } else if (allNumeric) {
+                    numericColIndices.push(i);
+                }
+            });
+
+            if (xAxisIdx === -1) {
+                xAxisIdx = headers.findIndex((_, i) => !numericColIndices.includes(i));
+                if (xAxisIdx === -1) xAxisIdx = 0;
+            }
+
+            const finalNumericIndices = numericColIndices.filter(idx => idx !== xAxisIdx);
+
+            const categories = rows.map(r => r[xAxisIdx]);
+            const series = [];
+            
+            finalNumericIndices.forEach(idx => {
+                series.push({
+                    name: headers[idx],
+                    data: rows.map(r => parseFloat(r[idx].replace(/,/g, '')))
+                });
+            });
+
+            if (series.length === 0) return;
+
+            container.innerHTML = '';
+            const chartDiv = document.createElement('div');
+            chartDiv.className = 'chart-container';
+            container.appendChild(chartDiv);
+
+            let chartType = 'bar';
+            const hLow = headers[xAxisIdx].toLowerCase();
+            if (hLow.match(/date|month|year|time|day|period/) || categories.length > 8) {
+                chartType = 'area';
+            }
+            if (latestUserQuery.toLowerCase().includes('line')) chartType = 'line';
+            if (latestUserQuery.toLowerCase().includes('bar')) chartType = 'bar';
+            if (latestUserQuery.toLowerCase().includes('pie')) chartType = 'pie';
+
+            const options = {
+                series: series,
+                chart: {
+                    type: chartType,
+                    height: 350,
+                    foreColor: '#94a3b8',
+                    toolbar: { show: true },
+                    background: 'transparent',
+                    animations: { enabled: true, easing: 'easeinout', speed: 800 }
+                },
+                colors: ['#38bdf8', '#818cf8', '#f472b6', '#fbbf24', '#34d399'],
+                dataLabels: { enabled: chartType === 'pie' },
+                stroke: { curve: 'smooth', width: 3 },
+                xaxis: { 
+                    categories: categories,
+                    labels: { rotate: -45, rotateAlways: categories.length > 5, offsetHeight: 10, style: { fontSize: '10px' } },
+                    axisBorder: { show: false },
+                    axisTicks: { show: false }
+                },
+                yaxis: {
+                    labels: { formatter: (val) => val.toLocaleString() }
+                },
+                tooltip: { theme: 'dark', x: { show: true } },
+                grid: { borderColor: 'rgba(255, 255, 255, 0.08)', strokeDashArray: 4 },
+                legend: { position: 'top', horizontalAlign: 'right' },
+                fill: {
+                    type: chartType === 'area' ? 'gradient' : 'solid',
+                    gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0.05, stops: [0, 90, 100] }
+                }
+            };
+
+            const chart = new ApexCharts(chartDiv, options);
+            chart.render();
+        }
+
+        function addTypingIndicator() {
+            const div = document.createElement('div');
+            div.className = 'typing';
+            div.id = 'typing-indicator';
+            div.innerHTML = '<span></span><span></span><span></span>';
+            chatMessages.appendChild(div);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            return div;
+        }
+
+        function removeTypingIndicator() {
+            const indicator = document.getElementById('typing-indicator');
+            if (indicator) indicator.remove();
         }
         
         chatForm.addEventListener('submit', async (e) => {
@@ -60,33 +318,35 @@
             const message = messageInput.value.trim();
             if (!message) return;
             
+            latestUserQuery = message;
             addMessage(message, 'user');
             messageInput.value = '';
             sendBtn.disabled = true;
-            sendBtn.textContent = 'Sending...';
+            
+            addTypingIndicator();
             
             try {
+                // Include selected agent ID in the request
+                const agent_id = agentSelect.value;
                 const response = await fetch('/api/query', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({message})
+                    body: JSON.stringify({message, agent_id})
                 });
                 
                 const data = await response.json();
+                removeTypingIndicator();
                 
                 if (data.error) {
                     addMessage('Error: ' + data.error, 'error');
                 } else {
                     addMessage(data.response, 'agent');
-                    if (data.session_id) {
-                        console.log('Session ID:', data.session_id);
-                    }
                 }
             } catch (err) {
-                addMessage('Request failed: ' + err.message, 'error');
+                removeTypingIndicator();
+                addMessage('Connection failed: ' + err.message, 'error');
             } finally {
                 sendBtn.disabled = false;
-                sendBtn.textContent = 'Send';
             }
         });
         

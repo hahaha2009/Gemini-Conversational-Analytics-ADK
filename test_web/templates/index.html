@@ -3,27 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BQ Data Agent Test</title>
+    <title>BQ Data Agent Login</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <div class="container">
-        <h1>BQ Data Agent Test Harness</h1>
-        <p class="subtitle">Test OAuth passthrough to Agent Engine</p>
-        
-        <div class="login-box">
-            <p>Login with your Google account to test querying the Data Agent with your identity.</p>
-            <a href="{{ url_for('login') }}" class="btn btn-primary">Login with Google</a>
-        </div>
-        
-        <div class="info-box">
-            <h3>What this tests:</h3>
-            <ul>
-                <li>OAuth login captures your access token</li>
-                <li>Token is passed to Agent Engine session state</li>
-                <li>Agent bridges token to DataAgentToolset</li>
-                <li>BigQuery queries run with your identity</li>
-            </ul>
+    <div class="container overflow-visible">
+        <header>
+            <h1>BQ Data Agent</h1>
+        </header>
+
+        <div class="login-container">
+            <div class="login-box">
+                <h2>Secure Data Access</h2>
+                <p>Authenticate with your corporate identity to access BigQuery insights through the Gemini Enterprise bridge.</p>
+                <a href="{{ url_for('login') }}" class="btn btn-primary">Sign in with Google</a>
+            </div>
+            
+            <div class="info-box">
+                <h3>ADK Bridge Security</h3>
+                <ul>
+                    <li><strong>OAuth Passthrough</strong> Captures your secure access token.</li>
+                    <li><strong>Identity Persistance</strong> Token is tied to your ADK session.</li>
+                    <li><strong>BigQuery Governance</strong> All queries execute with your IAM permissions.</li>
+                    <li><strong>Zero Trust</strong> No hardcoded service account keys or shared secrets.</li>
+                </ul>
+            </div>
         </div>
     </div>
 </body>
