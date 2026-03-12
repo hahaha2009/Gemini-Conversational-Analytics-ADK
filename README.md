@@ -28,10 +28,7 @@ sequenceDiagram
 
 ```text
 ├── app/
-│   ├── orders/                 # Orders Analyst Agent
-│   │   ├── agent.py            # Agent definition + DataAgentToolset
-│   │   └── .env                # Runtime environment variables
-│   └── inventory/              # Inventory Analyst Agent
+│   └── cbs/                    # CBS Analyst Agent
 │       ├── agent.py            # Agent definition + DataAgentToolset
 │       └── .env                # Runtime environment variables
 ├── docs/
@@ -71,7 +68,9 @@ sequenceDiagram
 ### 1. Install Dependencies
 
 ```bash
-uv sync
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
 ```
 
 ### 2. Configure Environment
@@ -84,8 +83,7 @@ Edit `.env` with your project details:
 ```bash
 GOOGLE_CLOUD_PROJECT=your-project-id
 GOOGLE_CLOUD_PROJECT_NUMBER=your-project-number
-AGENT_ORDERS_ID=your-orders-data-agent-id
-AGENT_INVENTORY_ID=your-inventory-data-agent-id
+AGENT_ID=your-cbs-data-agent-id
 GEMINI_APP_ID=your-gemini-app-id
 OAUTH_CLIENT_ID=your-oauth-client-id
 OAUTH_CLIENT_SECRET=your-oauth-client-secret
@@ -94,18 +92,10 @@ OAUTH_CLIENT_SECRET=your-oauth-client-secret
 Create per-agent `.env` files:
 
 ```bash
-# app/orders/.env
-cat > app/orders/.env << EOF
+# app/cbs/.env
+cat > app/cbs/.env << EOF
 GOOGLE_CLOUD_PROJECT=your-project-id
-AGENT_ORDERS_ID=your-orders-data-agent-id
-OAUTH_CLIENT_ID=your-oauth-client-id
-OAUTH_CLIENT_SECRET=your-oauth-client-secret
-EOF
-
-# app/inventory/.env
-cat > app/inventory/.env << EOF
-GOOGLE_CLOUD_PROJECT=your-project-id
-AGENT_INVENTORY_ID=your-inventory-data-agent-id
+AGENT_ID=your-cbs-data-agent-id
 OAUTH_CLIENT_ID=your-oauth-client-id
 OAUTH_CLIENT_SECRET=your-oauth-client-secret
 EOF
@@ -114,7 +104,7 @@ EOF
 ### 3. Create Backend Data Agents
 
 ```bash
-uv run python scripts/admin_tools.py
+python scripts/admin_tools.py
 ```
 
 ## Deployment
@@ -130,37 +120,39 @@ Save the Reasoning Engine resource names from the output.
 ### Step 2: Setup OAuth Authorization
 
 ```bash
-uv run python scripts/setup_auth.py
+python scripts/setup_auth.py
 ```
 
 ### Step 3: Register with Gemini Enterprise
 
 ```bash
-# Register Orders agent only
-uv run python scripts/register_agents.py \
-  --orders-resource <ORDERS_RESOURCE_NAME>
-
-# Or register both agents
-uv run python scripts/register_agents.py \
-  --orders-resource <ORDERS_RESOURCE_NAME> \
-  --inventory-resource <INVENTORY_RESOURCE_NAME>
+# Register CBS agent
+python scripts/register_agents.py \
+  --resource-name <RESOURCE_NAME>
 ```
 
 ### Step 4: Test
 
-Access Gemini Enterprise to see "Order & User Analyst" and "Inventory & Product Analyst" agents.
+Access Gemini Enterprise to see "CBS" agents. CBS is a Core Banking System Analyst Agent to answer questions about the CIF, Account and Products.
+
+## Migration to a New Project
+
+If you are migrating the CBS Agent to a completely new GCP project, follow these ordered implementation steps:
+
+1. **Enable APIs**: Ensure Vertex AI, Conversational Analytics, Discovery Engine, and BigQuery APIs are enabled in the new project's Cloud Console.
+2. **Environment**: Update your `.env` file with the new `GOOGLE_CLOUD_PROJECT` identifier.
+3. **Data Agent Backend**: Run `python scripts/admin_tools.py` to create the Data Agent metadata in the new project. Copy the newly created Agent ID to `AGENT_ID` in `.env`.
+4. **OAuth Client**: Create a new Web OAuth Client in the new project. Ensure to add the Discovery Engine and test web app redirect URIs. Add the generated credentials (`OAUTH_CLIENT_ID` and `OAUTH_CLIENT_SECRET`) to your `.env` file.
+5. **Auth Resource**: Run `python scripts/setup_auth.py` to create the enterprise authorization resource in the new project.
+6. **Agent Engine Deployment**: Run `bash scripts/deploy_agents.sh` to upload the code to the Reasoning Engine. Copy the printed Reason Engine ID to `REASONING_ENGINE_ID` in `.env`.
+7. **Registration**: Finally, register the deployed agent by running `python scripts/register_agents.py --resource-name projects/<YOUR_PROJECT_NUMBER>/locations/us-central1/reasoningEngines/<REASONING_ENGINE_ID>`.
 
 ## Sample Queries
 
-**Orders Agent:**
-- "How many orders are in 'Complete' status?"
-- "Who are the top 5 users by total spend?"
-- "What is the average number of items per order?"
-
-**Inventory Agent:**
-- "What is the name and price of product ID 1?"
-- "Which distribution center has the most inventory?"
-- "How many products are in the 'Accessories' category?"
+**CBS Agent:**
+- "How many customers do we have mapped to the Priority segment?"
+- "What is the total balance across all Savings accounts?"
+- "List the most recent 10 transactions of type 'deposit'."
 
 ## Local Development
 
@@ -168,7 +160,7 @@ Test agents locally:
 
 ```bash
 export $(cat .env | xargs)
-uv run adk run app/orders
+adk run app/cbs
 ```
 
 ## Local Testing with OAuth
@@ -177,9 +169,9 @@ Test the OAuth passthrough flow using the test web app:
 
 ```bash
 cd test_web
-uv venv .venv
+python -m venv .venv
 source .venv/bin/activate
-uv pip install --index-url https://pypi.org/simple/ -r requirements.txt
+pip install -r requirements.txt
 python app.py
 ```
 
@@ -195,7 +187,7 @@ Open http://localhost:8080, login with Google, and query the agent.
 
 ![Gemini Enterprise Demo](docs/gemini-enterprise-demo.png)
 
-*Order & User Analyst responding to queries in Gemini Enterprise*
+*CBS responding to queries in Gemini Enterprise*
 
 ### Test Web App
 

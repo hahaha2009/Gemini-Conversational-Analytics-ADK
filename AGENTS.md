@@ -14,31 +14,32 @@ Agent instructions for `bq_caapi_ge` -- Google ADK agents bridging the Conversat
 
 ```bash
 # Install all dependencies
-uv sync
-uv sync --group dev          # includes ruff
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+pip install ruff
 
 # Lint and format
-uv run ruff check .           # lint
-uv run ruff check --fix .     # lint with auto-fix
-uv run ruff format .          # format
-uv run ruff format --check .  # format check (CI)
+ruff check .           # lint
+ruff check --fix .     # lint with auto-fix
+ruff format .          # format
+ruff format --check .  # format check (CI)
 
 # Run agents locally (requires configured .env)
 export $(cat .env | xargs)
-uv run adk run app/orders
-uv run adk run app/inventory
+adk run app/cbs
 
 # Run operational scripts
-uv run python scripts/admin_tools.py
-uv run python scripts/setup_auth.py
-uv run python scripts/register_agents.py --orders-resource <RESOURCE>
+python scripts/admin_tools.py
+python scripts/setup_auth.py
+python scripts/register_agents.py --resource-name <RESOURCE_NAME>
 
 # Deploy to Vertex AI Agent Engine
 bash scripts/deploy_agents.sh
 
 # Test web app (standalone Flask OAuth harness)
-cd test_web && uv venv .venv && source .venv/bin/activate
-uv pip install --index-url https://pypi.org/simple/ -r requirements.txt
+cd test_web && python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
 python app.py
 ```
 
@@ -51,10 +52,9 @@ uv run pytest tests/test_module.py::test_function -v
 
 ```
 app/                        # ADK agent packages (each is a deployable unit)
-  orders/                   # Orders Analyst agent
+  cbs/                      # CBS Analyst agent
     __init__.py             # Re-exports: from . import agent as agent
     agent.py                # Agent def, OAuth bridge, DataAgentToolset
-  inventory/                # Inventory Analyst agent (same structure)
 scripts/                    # Operational scripts (not part of agent packages)
   admin_tools.py            # Create/update backend Data Agents
   setup_auth.py             # Create OAuth authorization resources
@@ -108,7 +108,7 @@ from google.adk.tools.base_tool import BaseTool
 - **Constants:** `UPPER_SNAKE_CASE` (`PROJECT_ID`, `MODEL_NAME`, `SCOPES`)
 - **Classes:** `PascalCase` (framework classes only; no custom classes)
 - **Modules/files:** `snake_case` (`admin_tools.py`, `setup_auth.py`)
-- **Agent names:** `snake_case` strings (`"orders_analyst"`, `"inventory_analyst"`)
+- **Agent names:** `snake_case` strings (`"cbs_analyst"`)
 
 ### Logging
 
@@ -157,7 +157,7 @@ def create_auth_resource(auth_id: str) -> None:
 
 ### Agent Module Pattern
 
-Each agent package (`app/orders/`, `app/inventory/`) follows:
+Each agent package (`app/cbs/`) follows:
 - `__init__.py` re-exports: `from . import agent as agent`
 - `agent.py` defines: module-level config, async `bridge_oauth_token` callback,
   `DataAgentCredentialsConfig`, `DataAgentToolset`, and a `root_agent` variable
@@ -174,6 +174,6 @@ Each agent package (`app/orders/`, `app/inventory/`) follows:
 
 - `.env` files are gitignored -- never commit them
 - See `.env.example` for required variables
-- Per-agent `.env` files: `app/orders/.env`, `app/inventory/.env`
+- Per-agent `.env` files: `app/cbs/.env`
 - `OAUTH_CLIENT_ID` and `OAUTH_CLIENT_SECRET` are required for all operations
 - `GOOGLE_GENAI_USE_VERTEXAI=TRUE` must be set for ADK to use Vertex AI

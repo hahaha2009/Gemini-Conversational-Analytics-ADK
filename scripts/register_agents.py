@@ -21,6 +21,10 @@ PROJECT_ID = os.getenv("GOOGLE_CLOUD_PROJECT")
 PROJECT_NUMBER = os.getenv("GOOGLE_CLOUD_PROJECT_NUMBER")
 APP_ID = os.getenv("GEMINI_APP_ID")
 LOCATION = os.getenv("GOOGLE_CLOUD_LOCATION", "global")
+# Reasoning Engines are regional!
+RE_LOCATION = os.getenv("REASONING_ENGINE_LOCATION") or (
+    "us-central1" if LOCATION == "global" else LOCATION
+)
 AUTH_RESOURCE_ID = os.getenv("AUTH_RESOURCE_ID", "bq-caapi-oauth")
 
 
@@ -120,5 +124,5 @@ if __name__ == "__main__":
         "CBS Analyst",
         "Expert in Customer, Account, and Transaction analysis.",
         args.resource_name,
-        auth_resource=f"projects/{PROJECT_NUMBER}/locations/{LOCATION}/authorizations/{AUTH_RESOURCE_ID}",
+        auth_resource=f"projects/{PROJECT_NUMBER}/locations/global/authorizations/{AUTH_RESOURCE_ID}",
     )

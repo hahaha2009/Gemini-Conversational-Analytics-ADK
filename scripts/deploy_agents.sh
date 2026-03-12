@@ -39,6 +39,9 @@ echo ""
 PROJECT_ID="$GOOGLE_CLOUD_PROJECT"
 # NOTE: While CA API uses 'global', Reasoning Engine deployment MUST be regional (e.g., us-central1)
 LOCATION=${GOOGLE_CLOUD_LOCATION:-us-central1}
+if [ "$LOCATION" == "global" ]; then
+    LOCATION="us-central1"
+fi
 
 deploy_agent() {
     local agent_dir=$1

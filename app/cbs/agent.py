@@ -44,7 +44,9 @@ async def bridge_oauth_token(
 
     Fallback: If running locally (terminal), fetches a token from ADC.
     """
-    access_token = tool_context.state.get(AUTH_RESOURCE_ID)
+    access_token = tool_context.state.get(AUTH_RESOURCE_ID) or args.get(
+        AUTH_RESOURCE_ID
+    )
 
     if not access_token:
         # Fallback for local terminal testing (adk run)
@@ -89,6 +91,9 @@ async def bridge_oauth_token(
 # Credentials config for OAuth identity passthrough
 creds_config = DataAgentCredentialsConfig(
     external_access_token_key=AUTH_RESOURCE_ID,
+    client_id=None,
+    client_secret=None,
+    scopes=None,
 )
 
 data_agent_toolset = DataAgentToolset(credentials_config=creds_config)
