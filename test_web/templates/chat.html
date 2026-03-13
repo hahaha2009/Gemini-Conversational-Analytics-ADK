@@ -33,7 +33,7 @@
             <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
         </div>
         
-        <button class="new-thread-btn" onclick="window.location.reload()">
+        <button class="new-thread-btn" onclick="resetSession()">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
             New Thread
         </button>
@@ -106,6 +106,16 @@
         const activeAgentDisplay = document.getElementById('active-agent-display');
         let latestUserQuery = "";
         const greeting = document.getElementById('greeting');
+
+        async function resetSession() {
+            try {
+                await fetch('/api/reset', { method: 'POST' });
+                window.location.reload();
+            } catch (err) {
+                console.error('Failed to reset session:', err);
+                window.location.reload(); // Reload anyway to clear UI
+            }
+        }
         
         marked.setOptions({
             highlight: function(code, lang) {
@@ -247,12 +257,15 @@
                             </div>
                             <div class="reasoning-content" style="display: none; border-left: 2px solid #f1f3f4; padding-left: 16px; margin-left: 10px;">
                                 ${reasoningSteps.map(step => {
-                                    // Robust title extraction: First 2-4 capitalized words or up to colon
-                                    const titleMatch = step.match(/^([^:.!?\n]{3,30})(?:\:|\s)(.+)$/);
-                                    if (titleMatch) {
-                                        return `<div class="reasoning-step-title">${titleMatch[1]}</div><div class="reasoning-step-text">${titleMatch[2]}</div>`;
+                                    // ONLY split if there's a colon :
+                                    // This prevents breaking conversational lines like "Retrieving or searching for context"
+                                    if (step.includes(':')) {
+                                        const parts = step.split(':');
+                                        const title = parts[0].trim();
+                                        const text = parts.slice(1).join(':').trim();
+                                        return `<div class="reasoning-step-title">${title}</div><div class="reasoning-step-text">${text}</div>`;
                                     }
-                                    return `<div class="reasoning-step-text">${step}</div>`;
+                                    return `<div class="reasoning-step-text" style="margin-top: 12px;">${step}</div>`;
                                 }).join('')}
                             </div>
                         </div>
@@ -295,9 +308,12 @@
                 // NOW handle tables after innerHTML modifications are done
                 const tables = div.querySelectorAll('table');
                 tables.forEach((table, index) => {
-                    // Wrap table in a scrollable div
                     const wrapper = document.createElement('div');
                     wrapper.className = 'table-wrapper';
+                    // Add substantial margin if there's more than one table
+                    if (index > 0) {
+                        wrapper.style.marginTop = '24px';
+                    }
                     table.parentNode.insertBefore(wrapper, table);
                     wrapper.appendChild(table);
                     
@@ -415,18 +431,44 @@
                     if (xAxisIdx === -1) xAxisIdx = 0;
                 }
 
-                const finalNumericIndices = numericColIndices.filter(idx => idx !== xAxisIdx);
-                const series = [];
+                const dimensionColIndices = headers.map((_, i) => i).filter(i => i !== xAxisIdx && !numericColIndices.includes(i));
                 
-                finalNumericIndices.forEach(idx => {
-                    series.push({
-                        name: headers[idx],
-                        data: rows.map(r => {
-                            const val = r[idx] ? r[idx].toString().replace(/,/g, '') : "0";
-                            return isNumericValue(val) ? parseFloat(val) : 0;
-                        })
+                let series = [];
+                let categories = rows.map(r => r[xAxisIdx] || "");
+
+                // Special case: 2 dimensions and 1 value (e.g., product_type, gender, count)
+                if (dimensionColIndices.length === 1 && numericColIndices.length === 1) {
+                    const groupIdx = dimensionColIndices[0];
+                    const valueIdx = numericColIndices[0];
+                    
+                    const uniqueCategories = [...new Set(rows.map(r => r[xAxisIdx]))];
+                    const uniqueGroups = [...new Set(rows.map(r => r[groupIdx]))];
+                    
+                    categories = uniqueCategories;
+                    series = uniqueGroups.map(group => {
+                        return {
+                            name: group,
+                            data: uniqueCategories.map(cat => {
+                                const row = rows.find(r => r[xAxisIdx] === cat && r[groupIdx] === group);
+                                if (!row) return 0;
+                                const val = row[valueIdx].toString().replace(/,/g, '');
+                                return isNumericValue(val) ? parseFloat(val) : 0;
+                            })
+                        };
                     });
-                });
+                } else {
+                    // Standard case: 1 dimension and N values
+                    const finalNumericIndices = numericColIndices.filter(idx => idx !== xAxisIdx);
+                    series = finalNumericIndices.map(idx => {
+                        return {
+                            name: headers[idx],
+                            data: rows.map(r => {
+                                const val = r[idx] ? r[idx].toString().replace(/,/g, '') : "0";
+                                return isNumericValue(val) ? parseFloat(val) : 0;
+                            })
+                        };
+                    });
+                }
 
                 if (series.length === 0) {
                     alert("Click detected, but no numeric data columns were identified for charting.");
@@ -467,7 +509,7 @@
                     dataLabels: { enabled: chartType === 'pie' },
                     stroke: { curve: 'smooth', width: 3 },
                     xaxis: { 
-                        categories: rows.map(r => r[xAxisIdx] || ""),
+                        categories: categories,
                         labels: { 
                             rotate: -45, 
                             rotateAlways: rows.length > 5, 

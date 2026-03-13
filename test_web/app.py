@@ -4,6 +4,8 @@ import json
 import os
 import secrets
 import traceback
+import uuid
+from datetime import datetime, timedelta
 
 import requests
 from dotenv import load_dotenv
@@ -179,17 +181,33 @@ def query():
             else:
                 agent_path = f"projects/{PROJECT_ID}/locations/{LOCATION}/dataAgents/{selected_agent_id}"
             
-            # Construct direct stateless chat request
+            # Manage session history
+            if "history" not in session:
+                session["history"] = []
+            
+            # Format history for the CA API
+            messages = []
+            for h in session["history"]:
+                msg = geminidataanalytics.Message()
+                if h["role"] == "user":
+                    msg.user_message.text = h["content"]
+                else:
+                    # In history, we just store the text content
+                    msg.system_message.text.parts.append(h["content"])
+                messages.append(msg)
+            
+            # Add current user message
+            curr_msg = geminidataanalytics.Message()
+            curr_msg.user_message.text = message
+            messages.append(curr_msg)
+
+            # Construct direct chat request with history
             request_data = geminidataanalytics.ChatRequest(
                 parent=f"projects/{PROJECT_ID}/locations/{LOCATION}",
                 data_agent_context=geminidataanalytics.DataAgentContext(
                     data_agent=agent_path
                 ),
-                messages=[
-                    geminidataanalytics.Message(
-                        user_message=geminidataanalytics.UserMessage(text=message)
-                    )
-                ]
+                messages=messages
             )
             
             stream = gda_client.chat(request=request_data)
@@ -240,13 +258,28 @@ def query():
                     if sys_msg.error:
                         response_parts.append(f"Error from Agent: {sys_msg.error.text}")
             
+            final_response = "\n\n".join(response_parts) or "Direct CA responded, but no visible message found."
+            
+            # Update history with both current user message and the agent response
+            history = session.get("history", [])
+            history.append({"role": "user", "content": message})
+            history.append({"role": "agent", "content": final_response})
+            session["history"] = history # Ensure session is marked as modified
+            
             return {
-                "response": "\n\n".join(response_parts) or "Direct CA responded, but no visible message found.",
-                "session_id": "direct-ca-session",
+                "response": final_response,
+                "session_id": session.get("current_session_id", "direct-ca-session"),
             }
         except Exception as e:
             traceback.print_exc()
             return {"error": f"Direct CA Chat failed: {e}"}, 500
+@app.route("/api/reset", methods=["POST"])
+def reset_session():
+    """Reset the conversational history."""
+    session["history"] = []
+    session["current_session_id"] = str(uuid.uuid4())
+    return {"status": "success", "session_id": session["current_session_id"]}
+
 
     # MIDDLEWARE MODE (Default): Call Reasoning Engine (ADK Agent)
     try:
