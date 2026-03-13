@@ -221,13 +221,20 @@ def query():
                                 header_row = "| " + " | ".join(headers) + " |"
                                 divider_row = "| " + " | ".join(["---"] * len(headers)) + " |"
                                 table_rows = []
-                                for row in data_rows[:10]:  # Limit to 10 rows for display
-                                    table_rows.append("| " + " | ".join(str(row.get(h, "")) for h in headers) + " |")
+                                for row in data_rows:
+                                    formatted_vals = []
+                                    for h in headers:
+                                        val = row.get(h, "")
+                                        # Strip .0 from floats that are actually integers
+                                        if isinstance(val, float) and val.is_integer():
+                                            val = int(val)
+                                        elif isinstance(val, str) and val.endswith(".0") and val[:-2].isdigit():
+                                            val = val[:-2]
+                                        formatted_vals.append(str(val))
+                                    table_rows.append("| " + " | ".join(formatted_vals) + " |")
                                 
                                 markdown_table = "\n".join([header_row, divider_row] + table_rows)
                                 response_parts.append(markdown_table)
-                                if len(data_rows) > 10:
-                                    response_parts.append(f"\n*Showing top 10 rows only.*")
                     
                     # Handle errors returned in the protocol
                     if sys_msg.error:

@@ -12,78 +12,90 @@
     <!-- Visualization Support -->
     <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
     <style>
-        .chart-container {
-            background: rgba(15, 23, 42, 0.5);
-            border: 1px solid var(--glass-border);
-            border-radius: 12px;
-            padding: 15px;
-            margin: 15px 0;
-            min-height: 300px;
-        }
-        .chart-actions {
-            display: flex;
-            gap: 10px;
-            margin-top: 10px;
-        }
         .agent-selector {
-            background: var(--glass-bg);
-            border: 1px solid var(--glass-border);
+            background: #fff;
+            border: 1px solid var(--border-color);
             color: var(--text-primary);
             padding: 5px 10px;
             border-radius: 8px;
             font-size: 0.8rem;
-            margin-left: 15px;
             cursor: pointer;
             outline: none;
-            backdrop-filter: blur(10px);
-        }
-        .agent-selector option {
-            background: #1e293b;
-            color: var(--text-primary);
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <div style="display: flex; align-items: center;">
-                <h1>BQ Data Agent</h1>
-                <select id="agent-select" class="agent-selector">
+    <aside class="sidebar">
+        <div class="sidebar-top">
+            <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
+            <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h20v18H2zM2 8h20m-14 0v13m7-13v13"/></svg>
+            <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+            <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </div>
+        
+        <button class="new-thread-btn" onclick="window.location.reload()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+            New Thread
+        </button>
+
+        <div class="sidebar-bottom">
+            <div class="sidebar-item" style="cursor: default;">
+                <select id="agent-select" class="agent-selector" style="width: 100%; padding: 8px; border-radius: 8px; border: 1px solid var(--border-color); background: #eee;">
                     <option value="">Loading agents...</option>
                 </select>
+                <div style="font-size: 10px; color: var(--text-secondary); margin-top: 4px;">Active: <span id="active-agent-display">Default</span></div>
             </div>
-            <div class="user-info">
-                <span>{{ user_email }}</span>
-                <a href="{{ url_for('logout') }}" class="btn btn-small">Logout</a>
+            <div class="sidebar-item" style="justify-content: flex-start; gap: 8px; border-top: 1px solid var(--border-color); margin-top: 12px; padding-top: 12px;">
+                <div style="width: 24px; height: 24px; background: #ddd; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px;">{{ user_email[0].upper() }}</div>
+                <div style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.8rem;">{{ user_email }}</div>
+                <a href="{{ url_for('logout') }}" style="color: var(--text-secondary);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg></a>
             </div>
-        </header>
-        
-        <div class="status-bar">
-            <div class="status-item">
-                <strong>Active Agent</strong> <span id="active-agent-display">Default</span>
+            <div class="sidebar-item">
+                <span><svg width="16" height="16" style="margin-right:8px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> Schedule thread</span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
             </div>
-            <div class="status-item">
-                <strong>Auth</strong> {{ auth_resource_id }}
+            <div class="sidebar-item">
+                <span><svg width="16" height="16" style="margin-right:8px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> Thread Settings</span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
             </div>
-            <div class="status-item">
-                <strong>Expires</strong> 
-                <span id="token-expiry">--:--</span>
+            <div class="context-usage">
+                <div class="context-label">Context Usage</div>
+                <div class="context-bar-bg"><div class="context-bar-fill"></div></div>
+                <div style="display:flex; justify-content:space-between; font-size:10px; color:#5f6368; margin-top:4px">
+                    <span>0</span>
+                    <span>1.0m</span>
+                </div>
             </div>
         </div>
-        
-        <div id="chat-messages" class="chat-messages">
-            <div class="message system">
-                Security Bridge Active. OAuth identity will be passed to BigQuery.
+    </aside>
+
+    <main class="main-content">
+        <div class="container">
+            <div id="chat-messages" class="chat-messages">
+                <div class="greeting-container" id="greeting">
+                    <h1 class="greeting-text">How can I help you today?</h1>
+                    <div class="suggested-queries">
+                        <div class="query-chip" onclick="sendSuggested('What datasets do you know about?')">What datasets do you know about?</div>
+                        <div class="query-chip" onclick="sendSuggested('Suggest business insights from dataset')">Suggest business insights from dataset</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="input-area">
+                <form id="chat-form" class="chat-form">
+                    <div class="input-icons-left">
+                        <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                        <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                        <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+                    </div>
+                    <input type="text" id="message-input" placeholder="Write a message, or use /commands, or reference @tables/columns..." autocomplete="off">
+                    <button type="submit" id="send-btn" class="send-btn">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+                    </button>
+                </form>
             </div>
         </div>
-        
-        <div class="input-container">
-            <form id="chat-form" class="chat-form">
-                <input type="text" id="message-input" placeholder="Ask about customers, orders, or insights..." autocomplete="off">
-                <button type="submit" id="send-btn" class="btn btn-primary">Send</button>
-            </form>
-        </div>
-    </div>
+    </main>
     
     <script>
         const chatMessages = document.getElementById('chat-messages');
@@ -93,6 +105,7 @@
         const agentSelect = document.getElementById('agent-select');
         const activeAgentDisplay = document.getElementById('active-agent-display');
         let latestUserQuery = "";
+        const greeting = document.getElementById('greeting');
         
         marked.setOptions({
             highlight: function(code, lang) {
@@ -101,6 +114,20 @@
             },
             headerIds: false,
             mangle: false
+        });
+
+        function sendSuggested(text) {
+            messageInput.value = text;
+            chatForm.dispatchEvent(new Event('submit'));
+        }
+
+        // Handle send button active state
+        messageInput.addEventListener('input', () => {
+            if (messageInput.value.trim().length > 0) {
+                sendBtn.classList.add('active');
+            } else {
+                sendBtn.classList.remove('active');
+            }
         });
 
         // Fetch available agents
@@ -118,7 +145,7 @@
                     });
                     
                     // Set initial active agent display
-                    if (data.agents.length > 0) {
+                    if (data.agents.length > 0 && activeAgentDisplay) {
                         activeAgentDisplay.textContent = agentSelect.options[agentSelect.selectedIndex].text;
                     }
                 }
@@ -129,10 +156,14 @@
         }
         fetchAgents();
 
-        agentSelect.addEventListener('change', () => {
-            activeAgentDisplay.textContent = agentSelect.options[agentSelect.selectedIndex].text;
-            addMessage(`Switched to agent: ${activeAgentDisplay.textContent}`, 'system');
-        });
+        if (agentSelect) {
+            agentSelect.addEventListener('change', () => {
+                if (activeAgentDisplay) {
+                    activeAgentDisplay.textContent = agentSelect.options[agentSelect.selectedIndex].text;
+                }
+                addMessage(`Switched to agent: ${activeAgentDisplay ? activeAgentDisplay.textContent : 'Selected'}`, 'system');
+            });
+        }
 
         function formatTokenExpiry() {
             const expiryStr = "{{ token_expiry }}";
@@ -153,29 +184,165 @@
         }
         formatTokenExpiry();
 
+        function toggleReasoning(btn) {
+            const content = btn.parentElement.nextElementSibling;
+            const isHidden = content.style.display === 'none';
+            content.style.display = isHidden ? 'block' : 'none';
+            btn.innerHTML = (isHidden ? 'Hide reasoning' : 'Show reasoning') + 
+                          ' <span class="toggle-icon">' + (isHidden ? '▲' : '▼') + '</span>';
+        }
+
         function addMessage(content, type) {
+            if (greeting) greeting.style.display = 'none';
+
             const div = document.createElement('div');
             div.className = 'message ' + type;
             
             if (type === 'agent') {
-                div.innerHTML = marked.parse(content);
+                // Check if content has "Thoughts" or "Explanation" sections
+                // This is a heuristic for the demo
+                let reasoningHtml = "";
+                let mainContent = "";
+
+                // Detect Reasoning blocks vs Result blocks
+                const lines = content.split('\n');
+                let inReasoning = false;
+                let reasoningSteps = [];
+                let resultHtml = "";
+
+                lines.forEach(line => {
+                    const low = line.toLowerCase();
+                    const isStep = low.startsWith('retrieving') || low.startsWith('searching') || 
+                                 low.startsWith('determining') || low.startsWith('formulated') || 
+                                 low.startsWith('proceed to') || low.startsWith('ready to execute') ||
+                                 low.startsWith('evaluating') || low.startsWith('considering') ||
+                                 low.startsWith("i've got") || low.startsWith("i've successfully") ||
+                                 low.startsWith('generating') || low.startsWith('crafting') ||
+                                 low.startsWith('concluding') || low.startsWith('synthesizing');
+                    
+                    if (isStep || (line.trim() && !line.includes('**') && !line.includes('#') && reasoningSteps.length < 8 && resultHtml === "")) {
+                        reasoningSteps.push(line);
+                    } else if (line.trim()) {
+                        resultHtml += line + '\n';
+                    }
+                });
+
+                if (reasoningSteps.length > 0) {
+                    reasoningHtml = `
+                        <div style="margin-bottom: 24px;">
+                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                                <svg class="sparkle-icon" width="20" height="20" viewBox="0 0 24 24">
+                                    <defs>
+                                        <linearGradient id="sparkle-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                            <stop offset="0%" style="stop-color:#4285f4;stop-opacity:1" />
+                                            <stop offset="50%" style="stop-color:#9b72cb;stop-opacity:1" />
+                                            <stop offset="100%" style="stop-color:#d96570;stop-opacity:1" />
+                                        </linearGradient>
+                                    </defs>
+                                    <path fill="url(#sparkle-grad)" d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 2Z"/>
+                                </svg>
+                                <button class="reasoning-toggle" onclick="toggleReasoning(this)">
+                                    Show reasoning <span class="toggle-icon">▼</span>
+                                </button>
+                            </div>
+                            <div class="reasoning-content" style="display: none; border-left: 2px solid #f1f3f4; padding-left: 16px; margin-left: 10px;">
+                                ${reasoningSteps.map(step => {
+                                    // Robust title extraction: First 2-4 capitalized words or up to colon
+                                    const titleMatch = step.match(/^([^:.!?\n]{3,30})(?:\:|\s)(.+)$/);
+                                    if (titleMatch) {
+                                        return `<div class="reasoning-step-title">${titleMatch[1]}</div><div class="reasoning-step-text">${titleMatch[2]}</div>`;
+                                    }
+                                    return `<div class="reasoning-step-text">${step}</div>`;
+                                }).join('')}
+                            </div>
+                        </div>
+                    `;
+                }
+
+                finalHtml = reasoningHtml + marked.parse(resultHtml || content);
+                div.innerHTML = finalHtml;
+
                 div.querySelectorAll('pre code').forEach((block) => {
                     hljs.highlightElement(block);
                 });
+                           // Detect follow-up questions from text (if they end with ?)
+                // We search in the resultHtml and insights part
+                const textForQuestions = resultHtml || content;
+                const questionMatches = textForQuestions.match(/[^.!?\n]+\?/g);
+                const followUps = [];
+                
+                if (questionMatches) {
+                    questionMatches.forEach(q => {
+                        const trimmed = q.trim();
+                        if (trimmed.length > 10 && trimmed.length < 150) {
+                            followUps.push(trimmed);
+                            // Remove the question from the displayed text if it's a follow-up
+                            // This matches the CA behavior where they become chips
+                            div.innerHTML = div.innerHTML.replace(trimmed, '');
+                        }
+                    });
+                }
+                
+                // Final cleanup of empty paragraphs from question removal
+                div.innerHTML = div.innerHTML.replace(/<p>\s*<\/p>/g, '');
+
+                // Fallback chips if none detected
+                if (followUps.length === 0) {
+                    followUps.push("Yes, tell me more about the data.");
+                    followUps.push("What kind of questions can I ask?");
+                }
+
+                // NOW handle tables after innerHTML modifications are done
                 const tables = div.querySelectorAll('table');
                 tables.forEach((table, index) => {
-                    addChartAction(table, div, index);
+                    // Wrap table in a scrollable div
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'table-wrapper';
+                    table.parentNode.insertBefore(wrapper, table);
+                    wrapper.appendChild(table);
+                    
+                    addChartAction(table, wrapper, index);
                 });
+
+                const followUpDiv = document.createElement('div');
+                followUpDiv.className = 'follow-up-suggestions';
+                followUps.forEach(text => {
+                    const item = document.createElement('div');
+                    item.className = 'follow-up-item';
+                    item.innerHTML = `
+                        <svg class="follow-up-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 10l-5 5 5 5m-5-5H20a8 8 0 0 0-8-8"/></svg>
+                        <span>${text}</span>
+                    `;
+                    item.onclick = () => sendSuggested(text);
+                    followUpDiv.appendChild(item);
+                });
+                div.appendChild(followUpDiv);
+
+                // Add message actions (icons)
+                const actions = document.createElement('div');
+                actions.style.display = 'flex';
+                actions.style.gap = '16px';
+                actions.style.marginTop = '16px';
+                actions.style.color = '#5f6368';
+                actions.innerHTML = `
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5L6 9H2v6h4l5 4V5zM19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h3a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-3"/></svg>
+                `;
+                div.appendChild(actions);
+
             } else {
-                div.textContent = content;
+                div.innerHTML = `<div class="message-bubble">${content}</div>`;
             }
             
             chatMessages.appendChild(div);
-            chatMessages.scrollTop = chatMessages.scrollHeight;
+            div.scrollIntoView({ behavior: 'smooth' });
             return div;
         }
 
-        function addChartAction(table, messageDiv, index) {
+        function addChartAction(table, containerDiv, index) {
             const actionsDiv = document.createElement('div');
             actionsDiv.className = 'chart-actions';
             
@@ -185,7 +352,7 @@
             btn.onclick = () => createChartFromTable(table, actionsDiv);
             
             actionsDiv.appendChild(btn);
-            messageDiv.appendChild(actionsDiv);
+            containerDiv.parentNode.insertBefore(actionsDiv, containerDiv.nextSibling);
 
             const chartKeywords = ['chart', 'graph', 'plot', 'visualize', 'trend', 'diagram'];
             if (chartKeywords.some(kw => latestUserQuery.toLowerCase().includes(kw))) {
@@ -194,108 +361,145 @@
         }
 
         function createChartFromTable(table, container) {
-            const headers = Array.from(table.querySelectorAll('th')).map(th => th.innerText.trim());
-            const rows = Array.from(table.querySelectorAll('tbody tr')).map(tr => 
-                Array.from(tr.querySelectorAll('td')).map(td => td.innerText.trim())
-            );
-
-            if (rows.length === 0) return;
-
-            let xAxisIdx = -1;
-            const numericColIndices = [];
-            
-            const isNumericValue = (v) => {
-                if (!v) return false;
-                const clean = v.replace(/,/g, '');
-                return /^-?\d*\.?\d+$/.test(clean);
-            };
-
-            const isDateValue = (v) => {
-                if (!v) return false;
-                return /^\d{4}-\d{2}-\d{2}$|^\d{4}\/\d{2}\/\d{2}$|^\d{2}\/\d{2}\/\d{4}$/.test(v);
-            };
-
-            headers.forEach((header, i) => {
-                const values = rows.map(r => r[i]);
-                const allNumeric = values.every(v => isNumericValue(v));
-                const anyDate = values.some(v => isDateValue(v));
+            try {
+                // More robust data extraction
+                const headers = Array.from(table.querySelectorAll('th')).map(th => th.innerText.trim());
+                const rowElements = table.querySelectorAll('tbody tr').length > 0 ? 
+                                table.querySelectorAll('tbody tr') : 
+                                Array.from(table.querySelectorAll('tr')).filter(tr => tr.querySelector('td'));
                 
-                const h = header.toLowerCase();
-                const isDateHeader = h.includes('date') || h.includes('month') || h.includes('year') || h.includes('time') || h.includes('day') || h.includes('period');
+                const rows = Array.from(rowElements).map(tr => 
+                    Array.from(tr.querySelectorAll('td')).map(td => td.innerText.trim())
+                );
 
-                if (anyDate || isDateHeader) {
-                    xAxisIdx = i;
-                } else if (allNumeric) {
-                    numericColIndices.push(i);
+                if (rows.length === 0) {
+                    console.log("No rows found for chart");
+                    return;
                 }
-            });
 
-            if (xAxisIdx === -1) {
-                xAxisIdx = headers.findIndex((_, i) => !numericColIndices.includes(i));
-                if (xAxisIdx === -1) xAxisIdx = 0;
-            }
+                let xAxisIdx = -1;
+                const numericColIndices = [];
+                
+                const isNumericValue = (v) => {
+                    if (!v) return false;
+                    const clean = v.toString().replace(/,/g, '').trim();
+                    if (clean === "") return false;
+                    return !isNaN(parseFloat(clean)) && isFinite(clean);
+                };
 
-            const finalNumericIndices = numericColIndices.filter(idx => idx !== xAxisIdx);
+                const isDateValue = (v) => {
+                    if (!v) return false;
+                    const clean = v.toString().trim();
+                    return /^\d{4}[-/]\d{2}[-/]\d{2}$|^\d{2}[-/]\d{2}[-/]\d{4}$/.test(clean);
+                };
 
-            const categories = rows.map(r => r[xAxisIdx]);
-            const series = [];
-            
-            finalNumericIndices.forEach(idx => {
-                series.push({
-                    name: headers[idx],
-                    data: rows.map(r => parseFloat(r[idx].replace(/,/g, '')))
+                headers.forEach((header, i) => {
+                    const values = rows.map(r => r[i]);
+                    // Check if at least 50% of values are numeric
+                    const numericCount = values.filter(v => isNumericValue(v)).length;
+                    const allNumeric = numericCount > (values.length / 2);
+                    const anyDate = values.some(v => isDateValue(v));
+                    
+                    const h = header.toLowerCase();
+                    const isDateHeader = h.includes('date') || h.includes('month') || h.includes('year') || h.includes('time') || h.includes('day') || h.includes('period');
+
+                    if (anyDate || isDateHeader) {
+                        xAxisIdx = i;
+                    } else if (allNumeric) {
+                        numericColIndices.push(i);
+                    }
                 });
-            });
 
-            if (series.length === 0) return;
-
-            container.innerHTML = '';
-            const chartDiv = document.createElement('div');
-            chartDiv.className = 'chart-container';
-            container.appendChild(chartDiv);
-
-            let chartType = 'bar';
-            const hLow = headers[xAxisIdx].toLowerCase();
-            if (hLow.match(/date|month|year|time|day|period/) || categories.length > 8) {
-                chartType = 'area';
-            }
-            if (latestUserQuery.toLowerCase().includes('line')) chartType = 'line';
-            if (latestUserQuery.toLowerCase().includes('bar')) chartType = 'bar';
-            if (latestUserQuery.toLowerCase().includes('pie')) chartType = 'pie';
-
-            const options = {
-                series: series,
-                chart: {
-                    type: chartType,
-                    height: 350,
-                    foreColor: '#94a3b8',
-                    toolbar: { show: true },
-                    background: 'transparent',
-                    animations: { enabled: true, easing: 'easeinout', speed: 800 }
-                },
-                colors: ['#38bdf8', '#818cf8', '#f472b6', '#fbbf24', '#34d399'],
-                dataLabels: { enabled: chartType === 'pie' },
-                stroke: { curve: 'smooth', width: 3 },
-                xaxis: { 
-                    categories: categories,
-                    labels: { rotate: -45, rotateAlways: categories.length > 5, offsetHeight: 10, style: { fontSize: '10px' } },
-                    axisBorder: { show: false },
-                    axisTicks: { show: false }
-                },
-                yaxis: {
-                    labels: { formatter: (val) => val.toLocaleString() }
-                },
-                tooltip: { theme: 'dark', x: { show: true } },
-                grid: { borderColor: 'rgba(255, 255, 255, 0.08)', strokeDashArray: 4 },
-                legend: { position: 'top', horizontalAlign: 'right' },
-                fill: {
-                    type: chartType === 'area' ? 'gradient' : 'solid',
-                    gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0.05, stops: [0, 90, 100] }
+                if (xAxisIdx === -1) {
+                    xAxisIdx = headers.findIndex((_, i) => !numericColIndices.includes(i));
+                    if (xAxisIdx === -1) xAxisIdx = 0;
                 }
-            };
 
-            const chart = new ApexCharts(chartDiv, options);
-            chart.render();
+                const finalNumericIndices = numericColIndices.filter(idx => idx !== xAxisIdx);
+                const series = [];
+                
+                finalNumericIndices.forEach(idx => {
+                    series.push({
+                        name: headers[idx],
+                        data: rows.map(r => {
+                            const val = r[idx] ? r[idx].toString().replace(/,/g, '') : "0";
+                            return isNumericValue(val) ? parseFloat(val) : 0;
+                        })
+                    });
+                });
+
+                if (series.length === 0) {
+                    alert("Click detected, but no numeric data columns were identified for charting.");
+                    return;
+                }
+
+                // If we got here, we have data. Now we can clear the container.
+                container.innerHTML = '';
+                const chartDiv = document.createElement('div');
+                chartDiv.className = 'chart-container';
+                chartDiv.style.minHeight = '300px';
+                chartDiv.style.background = '#fff';
+                chartDiv.style.border = '1px solid #e0e0e0';
+                container.appendChild(chartDiv);
+
+                let chartType = 'bar';
+                const hLow = headers[xAxisIdx].toLowerCase();
+                if (hLow.match(/date|month|year|time|day|period/) || rows.length > 8) {
+                    chartType = 'area';
+                }
+                const query = latestUserQuery.toLowerCase();
+                if (query.includes('line')) chartType = 'line';
+                else if (query.includes('bar')) chartType = 'bar';
+                else if (query.includes('pie')) chartType = 'pie';
+
+                const options = {
+                    series: series,
+                    chart: {
+                        type: chartType,
+                        height: 350,
+                        foreColor: '#5f6368',
+                        toolbar: { show: true },
+                        background: '#fff',
+                        animations: { enabled: true, easing: 'easeinout', speed: 800 }
+                    },
+                    theme: { mode: 'light' },
+                    colors: ['#4285f4', '#9b72cb', '#d96570', '#fbbf24', '#34d399', '#ff6b6b', '#4ecdc4'],
+                    dataLabels: { enabled: chartType === 'pie' },
+                    stroke: { curve: 'smooth', width: 3 },
+                    xaxis: { 
+                        categories: rows.map(r => r[xAxisIdx] || ""),
+                        labels: { 
+                            rotate: -45, 
+                            rotateAlways: rows.length > 5, 
+                            style: { fontSize: '10px', colors: '#5f6368' } 
+                        },
+                        axisBorder: { show: true, color: '#e0e0e0' }
+                    },
+                    yaxis: {
+                        labels: { formatter: (val) => val.toLocaleString(), style: { colors: '#5f6368' } }
+                    },
+                    tooltip: { theme: 'light' },
+                    grid: { borderColor: '#f0f0f0' },
+                    legend: { position: 'top', horizontalAlign: 'right' },
+                    fill: {
+                        type: chartType === 'area' ? 'gradient' : 'solid',
+                        gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0.05, stops: [0, 90, 100] }
+                    }
+                };
+
+                const chart = new ApexCharts(chartDiv, options);
+                chart.render();
+            } catch (err) {
+                console.error("Chart Error:", err);
+                alert("Sorry, there was an error generating the chart: " + err.message);
+            }
+        }
+
+        let contextUsagePercent = 5;
+        function updateContextUsage() {
+            contextUsagePercent = Math.min(100, contextUsagePercent + 5);
+            const fill = document.querySelector('.context-bar-fill');
+            if (fill) fill.style.width = contextUsagePercent + '%';
         }
 
         function addTypingIndicator() {
@@ -322,6 +526,7 @@
             addMessage(message, 'user');
             messageInput.value = '';
             sendBtn.disabled = true;
+            sendBtn.classList.remove('active');
             
             addTypingIndicator();
             
