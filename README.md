@@ -68,7 +68,7 @@ sequenceDiagram
 ### 1. Install Dependencies
 
 ```bash
-python -m venv .venv
+python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 ```
@@ -169,16 +169,24 @@ Test the OAuth passthrough flow using the test web app:
 
 ```bash
 cd test_web
-python -m venv .venv
+python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 python app.py
-../.venv/bin/python app.py
 ```
 
 
 Open http://localhost:8080, login with Google, and query the agent.
 
+> [!TIP]
+> **Accessing from outside Cloudtop**
+> If you are running `test_web` on your Cloudtop instance but want to test it via your local laptop's browser (e.g. MacBook), you should use SSH local port forwarding. This ensures your browser hits `localhost:8080`, which perfectly matches the required OAuth Client redirect URI.
+> 
+> Run this command **from your local laptop's terminal** (replace `cloudtop-ynd-glinux` with yours):
+> ```bash
+> ssh -L 8080:localhost:8080 cloudtop-ynd-glinux.c.googlers.com
+> ```
+> Once connected, simply open [http://localhost:8080](http://localhost:8080) on your laptop.
 **Prerequisites:**
 - Add `http://localhost:8080/auth/callback` to OAuth client redirect URIs in Cloud Console
 - Set `ORDERS_REASONING_ENGINE_ID` in root `.env`

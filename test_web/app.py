@@ -333,11 +333,9 @@ def reset_session():
     query_url = f"{AGENT_ENGINE_BASE}:streamQuery"
     query_payload = {
         "input": {
-            "message": message,
+            "new_message": {"role": "user", "parts": [{"text": message}]},
             "user_id": user_email,
             "session_id": session_id,
-            # Pass token inside input for Reasoning Engine REST API
-            AUTH_RESOURCE_ID: access_token,
         }
     }
 

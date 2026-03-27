@@ -125,8 +125,9 @@ def list_agents(client: geminidataanalytics.DataAgentServiceClient) -> None:
         page_result = client.list_data_agents(request=request)
         for agent in page_result:
             agent_id = agent.name.split("/")[-1]
+            clean_desc = agent.description.replace("\n", " | ") if agent.description else ""
             logger.info(
-                f"Agent Found - ID: {agent_id}, DisplayName: {agent.display_name}, Description: {agent.description}"
+                f"Agent Found - ID: {agent_id}, DisplayName: {agent.display_name}"
             )
     except Exception as e:
         logger.error(f"Failed to list agents: {e}")

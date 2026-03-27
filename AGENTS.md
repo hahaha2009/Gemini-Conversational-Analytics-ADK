@@ -38,7 +38,7 @@ python scripts/register_agents.py --resource-name <RESOURCE_NAME>
 bash scripts/deploy_agents.sh
 
 # Test web app (standalone Flask OAuth harness)
-cd test_web && python -m venv .venv && source .venv/bin/activate
+cd test_web && python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 python app.py
 ```

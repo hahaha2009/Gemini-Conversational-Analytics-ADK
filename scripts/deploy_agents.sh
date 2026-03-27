@@ -58,8 +58,7 @@ deploy_agent() {
         --region="$LOCATION" \
         --display_name="$display_name" \
         --temp_folder="$temp_dir" \
-        --env_file="$(pwd)/.env" \
-        --validate-agent-import
+        --env_file="$(pwd)/.env"
     
     echo -e "${GREEN}$display_name deployment command finished.${NC}"
     echo -e "${YELLOW}IMPORTANT: Check if a 'Reasoning Engine' ID was printed above.${NC}"

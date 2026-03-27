@@ -6,6 +6,9 @@ import os
 from datetime import datetime, timedelta
 from typing import Any, Optional
 
+from dotenv import load_dotenv
+load_dotenv()
+
 from google.adk.agents import Agent
 from google.adk.tools.base_tool import BaseTool
 from google.adk.tools.data_agent import DataAgentCredentialsConfig, DataAgentToolset
@@ -20,7 +23,7 @@ logger = logging.getLogger(__name__)
 # Configuration
 AGENT_ID = os.getenv("AGENT_ID", "agent-id-placeholder")
 PROJECT_ID = os.getenv("GOOGLE_CLOUD_PROJECT", "project-id-placeholder")
-MODEL_NAME = os.getenv("MODEL_NAME", "gemini-2.0-flash")
+MODEL_NAME = os.getenv("MODEL_NAME", "gemini-2.5-pro")
 AUTH_RESOURCE_ID = os.getenv("AUTH_RESOURCE_ID", "bq-caapi-oauth")
 
 DATA_AGENT_NAME = f"projects/{PROJECT_ID}/locations/global/dataAgents/{AGENT_ID}"
@@ -90,10 +93,9 @@ async def bridge_oauth_token(
 
 # Credentials config for OAuth identity passthrough
 creds_config = DataAgentCredentialsConfig(
-    external_access_token_key=AUTH_RESOURCE_ID,
-    client_id=None,
-    client_secret=None,
-    scopes=None,
+    client_id=OAUTH_CLIENT_ID or "dummy_client_id",
+    client_secret=OAUTH_CLIENT_SECRET or "dummy_client_secret",
+    scopes=SCOPES,
 )
 
 data_agent_toolset = DataAgentToolset(credentials_config=creds_config)

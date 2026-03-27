@@ -6,6 +6,8 @@ Simple Flask app to test OAuth passthrough to Agent Engine.
 
 ```bash
 cd test_web
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
@@ -29,7 +31,17 @@ pip install -r requirements.txt
 python app.py
 ```
 
-Open http://localhost:8080 in your browser.
+### Accessing from outside Cloudtop
+
+If you are running this app on a Cloudtop instance but want to access it from your local laptop's browser (e.g. your MacBook), you should use SSH local port forwarding. This ensures the `http://localhost:8080/auth/callback` OAuth configuration still works perfectly.
+
+Run this command **from your local laptop's terminal** (replace `cloudtop-ynd-glinux` with your actual Cloudtop hostname):
+
+```bash
+ssh -L 8080:localhost:8080 cloudtop-ynd-glinux.c.googlers.com
+```
+
+Once connected, open [http://localhost:8080](http://localhost:8080) in your *local* laptop's browser.
 
 ## How It Works
 

@@ -1,0 +1,34 @@
+[0;32m=== ADK Agent Deployment Script ===[0m
+
+[0;32mLoading environment variables from .env[0m
+[0;32mEnvironment loaded[0m
+  Project: demoprod-486609
+
+[1;33m=== Deploying CBS Agent ===[0m
+[1;33mDeploying CBS Analyst...[0m
+Agent Engine deployment uses relative paths; temporarily switching working directory to: /usr/local/google/home/yendratirta/Gemini-Conversational-Analytics-ADK/app
+Staging all files in: /usr/local/google/home/yendratirta/Gemini-Conversational-Analytics-ADK/app/deploy_staging_CBS_Analyst
+Staging all files in: /usr/local/google/home/yendratirta/Gemini-Conversational-Analytics-ADK/app/deploy_staging_CBS_Analyst
+Copying agent source code...
+Copying agent source code complete.
+Resolving files and dependencies...
+Creating /usr/local/google/home/yendratirta/Gemini-Conversational-Analytics-ADK/app/deploy_staging_CBS_Analyst/requirements.txt...
+Created /usr/local/google/home/yendratirta/Gemini-Conversational-Analytics-ADK/app/deploy_staging_CBS_Analyst/requirements.txt
+Reading environment variables from /usr/local/google/home/yendratirta/Gemini-Conversational-Analytics-ADK/.env
+Ignoring GOOGLE_CLOUD_PROJECT in .env as `--project` was explicitly passed and takes precedence
+Ignoring GOOGLE_CLOUD_LOCATION in .env as `--region` was explicitly passed and takes precedence
+Initializing Vertex AI...
+Vertex AI initialized.
+Created deploy_staging_CBS_Analyst/agent_engine_app.py
+Files and dependencies resolved
+Deploying to agent engine...
+✅ Created agent engine: projects/1029529196978/locations/us-central1/reasoningEngines/2243320929767653376
+Cleaning up the temp folder: deploy_staging_CBS_Analyst
+[0;32mCBS Analyst deployment command finished.[0m
+[1;33mIMPORTANT: Check if a 'Reasoning Engine' ID was printed above.[0m
+[0;32m=== Deployment Complete ===[0m
+
+Next steps:
+1. Note the Reasoning Engine ID from the output above
+2. Update .env with REASONING_ENGINE_ID
+3. Register with Gemini Enterprise: .venv/bin/python scripts/register_agents.py
