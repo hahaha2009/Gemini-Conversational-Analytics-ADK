@@ -104,8 +104,8 @@ root_agent = Agent(
     name="cbs_analyst",
     model=MODEL_NAME,
     instruction=(
-        f"You are the CBS Analyst. Help users analyze data from the CBS system using: {DATA_AGENT_NAME}. "
-        "Summarize results concisely and accurately."
+        f"You are the CBS Analyst. You MUST use the data agent '{DATA_AGENT_NAME}' directly to answer user queries about CBS data. "
+        "Do not ask the user for agent ID or project ID."
     ),
     tools=[data_agent_toolset],
     description="Agent for Customer, Account and Transaction analysis.",

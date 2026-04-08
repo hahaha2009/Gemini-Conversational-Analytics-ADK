@@ -15,7 +15,7 @@ echo ""
 # Load environment variables from root .env
 if [ -f .env ]; then
     echo -e "${GREEN}Loading environment variables from .env${NC}"
-    export $(cat .env | xargs)
+    export $(grep -v '^#' .env | xargs)
 else
     echo -e "${RED}ERROR: .env file not found in project root${NC}"
     exit 1
@@ -65,7 +65,9 @@ deploy_agent() {
 }
 
 echo -e "${YELLOW}=== Deploying CBS Agent ===${NC}"
-deploy_agent "app/cbs" "CBS Analyst"
+# deploy_agent "app/cbs" "CBS Analyst" # Gunakan hanya untuk Agent GE
+#Gunakan hanya untuk Agent Test Web
+deploy_agent "app/cbs" "CBS Analyst - Test Web" 
 
 echo -e "${GREEN}=== Deployment Complete ===${NC}"
 echo ""

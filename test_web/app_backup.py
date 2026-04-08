@@ -31,8 +31,7 @@ DIRECT_CA_MODE = os.getenv("DIRECT_CA_MODE", "TRUE").upper() == "TRUE"
 CLIENT_ID = os.getenv("OAUTH_CLIENT_ID")
 CLIENT_SECRET = os.getenv("OAUTH_CLIENT_SECRET")
 PROJECT_ID = os.getenv("GOOGLE_CLOUD_PROJECT")
-# Read specific ID for Test Web
-REASONING_ENGINE_ID = os.getenv("REASONING_ENGINE_ID_TEST_WEB")
+REASONING_ENGINE_ID = os.getenv("REASONING_ENGINE_ID")
 LOCATION = os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1")
 # Reasoning Engines are regional, while CA API is often global.
 RE_LOCATION = os.getenv("REASONING_ENGINE_LOCATION") or (
@@ -149,113 +148,140 @@ def chat():
     )
 
 
-def handle_direct_ca(message, access_token, user_email, selected_agent_id):
-    """Handle query using Direct CA API."""
-    try:
-        creds = Credentials(token=access_token)
-        gda_client = geminidataanalytics.DataChatServiceClient(credentials=creds)
-        
-        # Construct agent path dynamically
-        if "/" in selected_agent_id:
-            agent_path = selected_agent_id
-        else:
-            agent_path = f"projects/{PROJECT_ID}/locations/{LOCATION}/dataAgents/{selected_agent_id}"
-        
-        # Manage session history
-        if "history" not in session:
-            session["history"] = []
-        
-        # Format history for the CA API
-        messages = []
-        for h in session["history"]:
-            msg = geminidataanalytics.Message()
-            if h["role"] == "user":
-                msg.user_message.text = h["content"]
+@app.route("/api/query", methods=["POST"])
+def query():
+    """Send query to Agent Engine with OAuth token in session state."""
+    if "access_token" not in session:
+        return {"error": "Not authenticated"}, 401
+
+    data = request.get_json()
+    message = data.get("message", "")
+
+    if not message:
+        return {"error": "Message is required"}, 400
+
+    access_token = session["access_token"]
+    user_email = session.get("user_email", "test-user")
+    
+    # Use selected agent from request or session
+    selected_agent_id = data.get("agent_id") or session.get("selected_agent_id") or AGENT_ID
+    
+    if selected_agent_id and selected_agent_id != AGENT_ID:
+        session["selected_agent_id"] = selected_agent_id
+
+    if DIRECT_CA_MODE:
+        # DIRECT CA MODE: Call CA API directly using user's token
+        try:
+            creds = Credentials(token=access_token)
+            gda_client = geminidataanalytics.DataChatServiceClient(credentials=creds)
+            
+            # Construct agent path dynamically
+            if "/" in selected_agent_id:
+                agent_path = selected_agent_id
             else:
-                # In history, we just store the text content
-                msg.system_message.text.parts.append(h["content"])
-            messages.append(msg)
-        
-        # Add current user message
-        curr_msg = geminidataanalytics.Message()
-        curr_msg.user_message.text = message
-        messages.append(curr_msg)
+                agent_path = f"projects/{PROJECT_ID}/locations/{LOCATION}/dataAgents/{selected_agent_id}"
+            
+            # Manage session history
+            if "history" not in session:
+                session["history"] = []
+            
+            # Format history for the CA API
+            messages = []
+            for h in session["history"]:
+                msg = geminidataanalytics.Message()
+                if h["role"] == "user":
+                    msg.user_message.text = h["content"]
+                else:
+                    # In history, we just store the text content
+                    msg.system_message.text.parts.append(h["content"])
+                messages.append(msg)
+            
+            # Add current user message
+            curr_msg = geminidataanalytics.Message()
+            curr_msg.user_message.text = message
+            messages.append(curr_msg)
 
-        # Construct direct chat request with history
-        request_data = geminidataanalytics.ChatRequest(
-            parent=f"projects/{PROJECT_ID}/locations/{LOCATION}",
-            data_agent_context=geminidataanalytics.DataAgentContext(
-                data_agent=agent_path
-            ),
-            messages=messages
-        )
-        
-        stream = gda_client.chat(request=request_data)
-        response_parts = []
-        for msg in stream:
-            if msg.system_message:
-                sys_msg = msg.system_message
-                
-                # Handle text response
-                if sys_msg.text and sys_msg.text.parts:
-                    # Convert to dict for safer access if direct parts iteration fails
-                    text_dict = MessageToDict(sys_msg.text._pb)
-                    parts = text_dict.get("parts", [])
-                    if parts:
-                        response_parts.append("\n".join(parts))
+            # Construct direct chat request with history
+            request_data = geminidataanalytics.ChatRequest(
+                parent=f"projects/{PROJECT_ID}/locations/{LOCATION}",
+                data_agent_context=geminidataanalytics.DataAgentContext(
+                    data_agent=agent_path
+                ),
+                messages=messages
+            )
+            
+            stream = gda_client.chat(request=request_data)
+            response_parts = []
+            for msg in stream:
+                if msg.system_message:
+                    sys_msg = msg.system_message
                     
-                # Handle data/SQL
-                if sys_msg.data:
-                    if sys_msg.data.generated_sql:
-                        # response_parts.append(f"\nSQL: {sys_msg.data.generated_sql}")
-                        pass
-                    if sys_msg.data.result and sys_msg.data.result.data:
-                        msg_dict = MessageToDict(sys_msg.data.result._pb)
-                        data_rows = msg_dict.get("data", [])
-                        if data_rows:
-                            response_parts.append(f"\n({len(sys_msg.data.result.data)} rows retrieved):")
-                            # Create markdown table
-                            headers = list(data_rows[0].keys())
-                            header_row = "| " + " | ".join(headers) + " |"
-                            divider_row = "| " + " | ".join(["---"] * len(headers)) + " |"
-                            table_rows = []
-                            for row in data_rows:
-                                formatted_vals = []
-                                for h in headers:
-                                    val = row.get(h, "")
-                                    # Strip .0 from floats that are actually integers
-                                    if isinstance(val, float) and val.is_integer():
-                                        val = int(val)
-                                    elif isinstance(val, str) and val.endswith(".0") and val[:-2].isdigit():
-                                        val = val[:-2]
-                                    formatted_vals.append(str(val))
-                                table_rows.append("| " + " | ".join(formatted_vals) + " |")
-                            
-                            markdown_table = "\n".join([header_row, divider_row] + table_rows)
-                            response_parts.append(markdown_table)
-                
-                # Handle errors returned in the protocol
-                if sys_msg.error:
-                    response_parts.append(f"Error from Agent: {sys_msg.error.text}")
-        
-        final_response = "\n\n".join(response_parts) or "Direct CA responded, but no visible message found."
-        
-        # Update history with both current user message and the agent response
-        history = session.get("history", [])
-        history.append({"role": "user", "content": message})
-        history.append({"role": "agent", "content": final_response})
-        session["history"] = history # Ensure session is marked as modified
-        
-        return {
-            "response": final_response,
-            "session_id": session.get("current_session_id", "direct-ca-session"),
-        }
-    except Exception as e:
-        traceback.print_exc()
-        return {"error": f"Direct CA Chat failed: {e}"}, 500
+                    # Handle text response
+                    if sys_msg.text and sys_msg.text.parts:
+                        # Convert to dict for safer access if direct parts iteration fails
+                        text_dict = MessageToDict(sys_msg.text._pb)
+                        parts = text_dict.get("parts", [])
+                        if parts:
+                            response_parts.append("\n".join(parts))
+                        
+                    # Handle data/SQL
+                    if sys_msg.data:
+                        if sys_msg.data.generated_sql:
+                            # response_parts.append(f"\nSQL: {sys_msg.data.generated_sql}")
+                            pass
+                        if sys_msg.data.result and sys_msg.data.result.data:
+                            msg_dict = MessageToDict(sys_msg.data.result._pb)
+                            data_rows = msg_dict.get("data", [])
+                            if data_rows:
+                                response_parts.append(f"\n({len(sys_msg.data.result.data)} rows retrieved):")
+                                # Create markdown table
+                                headers = list(data_rows[0].keys())
+                                header_row = "| " + " | ".join(headers) + " |"
+                                divider_row = "| " + " | ".join(["---"] * len(headers)) + " |"
+                                table_rows = []
+                                for row in data_rows:
+                                    formatted_vals = []
+                                    for h in headers:
+                                        val = row.get(h, "")
+                                        # Strip .0 from floats that are actually integers
+                                        if isinstance(val, float) and val.is_integer():
+                                            val = int(val)
+                                        elif isinstance(val, str) and val.endswith(".0") and val[:-2].isdigit():
+                                            val = val[:-2]
+                                        formatted_vals.append(str(val))
+                                    table_rows.append("| " + " | ".join(formatted_vals) + " |")
+                                
+                                markdown_table = "\n".join([header_row, divider_row] + table_rows)
+                                response_parts.append(markdown_table)
+                    
+                    # Handle errors returned in the protocol
+                    if sys_msg.error:
+                        response_parts.append(f"Error from Agent: {sys_msg.error.text}")
+            
+            final_response = "\n\n".join(response_parts) or "Direct CA responded, but no visible message found."
+            
+            # Update history with both current user message and the agent response
+            history = session.get("history", [])
+            history.append({"role": "user", "content": message})
+            history.append({"role": "agent", "content": final_response})
+            session["history"] = history # Ensure session is marked as modified
+            
+            return {
+                "response": final_response,
+                "session_id": session.get("current_session_id", "direct-ca-session"),
+            }
+        except Exception as e:
+            traceback.print_exc()
+            return {"error": f"Direct CA Chat failed: {e}"}, 500
+@app.route("/api/reset", methods=["POST"])
+def reset_session():
+    """Reset the conversational history."""
+    session["history"] = []
+    session["current_session_id"] = str(uuid.uuid4())
+    return {"status": "success", "session_id": session["current_session_id"]}
 
-def handle_reasoning_engine(message, user_email, access_token):
-    """Handle query using Vertex AI Reasoning Engine."""
+
+    # MIDDLEWARE MODE (Default): Call Reasoning Engine (ADK Agent)
     try:
         import subprocess
 
@@ -274,6 +300,7 @@ def handle_reasoning_engine(message, user_email, access_token):
     }
 
     # Step 1: Create session with OAuth token in state
+    # This simulates what Gemini Enterprise does
     session_payload = {
         "userId": user_email,
         "sessionState": {
@@ -294,22 +321,19 @@ def handle_reasoning_engine(message, user_email, access_token):
 
     # Extract session ID from operation response
     operation = session_response.json()
+    # Session ID is in the operation name: .../sessions/SESSION_ID/operations/...
     session_name = operation.get("name", "")
     parts = session_name.split("/sessions/")
     if len(parts) < 2:
         return {"error": f"Could not parse session ID from: {session_name}"}, 500
 
     session_id = parts[1].split("/")[0]
-    
-    # Wait for session to propagate to container
-    import time
-    time.sleep(2)
 
     # Step 2: Query the agent
     query_url = f"{AGENT_ENGINE_BASE}:streamQuery"
     query_payload = {
         "input": {
-            "message": {"role": "user", "parts": [{"text": message}]},
+            "new_message": {"role": "user", "parts": [{"text": message}]},
             "user_id": user_email,
             "session_id": session_id,
         }
@@ -343,47 +367,6 @@ def handle_reasoning_engine(message, user_email, access_token):
         "response": response_text or "No response from agent",
         "session_id": session_id,
     }
-
-@app.route("/api/query", methods=["POST"])
-def query():
-    """Send query to Agent Engine with OAuth token in session state."""
-    if "access_token" not in session:
-        return {"error": "Not authenticated"}, 401
-
-    data = request.get_json()
-    message = data.get("message", "")
-
-    if not message:
-        return {"error": "Message is required"}, 400
-
-    access_token = session["access_token"]
-    user_email = session.get("user_email", "test-user")
-    
-    # Use selected agent from request or session
-    selected_agent_id = data.get("agent_id") or session.get("selected_agent_id") or AGENT_ID
-    
-    if selected_agent_id and selected_agent_id != AGENT_ID:
-        session["selected_agent_id"] = selected_agent_id
-
-    # Determine mode: from request, or fallback to env var
-    mode = data.get("mode")
-    if not mode:
-        mode = "direct" if DIRECT_CA_MODE else "reasoning_engine"
-
-    if mode == "direct":
-        return handle_direct_ca(message, access_token, user_email, selected_agent_id)
-    elif mode == "reasoning_engine":
-        return handle_reasoning_engine(message, user_email, access_token)
-    else:
-        return {"error": f"Invalid mode: {mode}"}, 400
-
-@app.route("/api/reset", methods=["POST"])
-def reset_session():
-    """Reset the conversational history."""
-    session["history"] = []
-    session["current_session_id"] = str(uuid.uuid4())
-    return {"status": "success", "session_id": session["current_session_id"]}
-
 
 
 @app.route("/api/agents")
