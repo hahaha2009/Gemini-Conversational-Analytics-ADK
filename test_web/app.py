@@ -256,20 +256,8 @@ def handle_direct_ca(message, access_token, user_email, selected_agent_id):
 
 def handle_reasoning_engine(message, user_email, access_token):
     """Handle query using Vertex AI Reasoning Engine."""
-    try:
-        import subprocess
-
-        gcp_token = subprocess.run(
-            ["gcloud", "auth", "print-access-token"],
-            capture_output=True,
-            text=True,
-            check=True,
-        ).stdout.strip()
-    except Exception as e:
-        return {"error": f"Failed to get GCP token: {e}"}, 500
-
     headers = {
-        "Authorization": f"Bearer {gcp_token}",
+        "Authorization": f"Bearer {access_token}",
         "Content-Type": "application/json",
     }
 
